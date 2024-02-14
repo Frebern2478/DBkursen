@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" href="../static/styles.css">
+</head>
+<body>
+    <h1>{{ productname }}</h1>
+    <ul>
+        Available in stock: {{ stock }}
+        Price: {{ price }}
+        <form action="#" method="POST">
+        <button type="submit">Add to Shopping Cart</button>
+        </form>
+        <li><a href="{{ url_for('shoppingcart') }}">Shopping Cart</a></li>
+    </ul>
+</body>
+</html>
