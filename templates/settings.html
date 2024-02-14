@@ -6,7 +6,9 @@
     <link rel="stylesheet" href="../static/styles.css">
 </head>
 <body>
-Shipping Address
+
+    <header><h2>Non-alcoholic Beer Store</h2></header>
+    <main>
     <form action="#" method="post">
     <label for="StreetAddress">Street Address:</label>
     <input type="text" name="StreetAddress" value="{{ user_info.street_address }}">
@@ -18,5 +20,11 @@ Shipping Address
     <input type="text" name="City" value="{{ user_info.city }}">
       <button type="submit">Submit</button>
     </form>
+
+    </main>
+
+    <footer>
+        <p>&copy; 2024 {{ footer_text }}</p>
+    </footer>
 </body>
 </html>

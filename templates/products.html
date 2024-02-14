@@ -6,12 +6,27 @@
     <link rel="stylesheet" href="../static/styles.css">
 </head>
 <body>
-    <h1>{{ productname }}</h1>
-    <h2><a href="{{ url_for('shoppingcart') }}">Shopping Cart</a></h2>
-    <ul>
-        {% for productname, prod_id in products %}
-            <li><a href="/product/{{ prod_id }}">{{ productname }}</a></li>
+<header><h2>Non-alcoholic Beer Store</h2></header>
+<h2><a href="{{ url_for('shoppingcart') }}">Shopping Cart</a></h2>
+    <div class="container">
+        {% for productname, prod_id, price in products %}
+        <div class="product-card">
+            <div class="product-tumb">
+                <img src="../static/beer.png" alt="">
+            </div>
+            <div class="product-details">
+                <h4><a href="/product/{{ prod_id }}">{{ productname }}</a></h4>
+                <p>Beskrivning</p>
+                <div class="product-bottom-details">
+                    <div class="product-price"> {{ price }} kr</div>
+                    <div class="product-links">
+
+                    </div>
+                </div>
+            </div>
+        </div>
         {% endfor %}
-    </ul>
+    </div>
+<footer></footer>
 </body>
 </html>

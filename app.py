@@ -27,7 +27,7 @@ def home():
     # Index sida / Start-sida.
     data = {
         'title': 'Non-alcoholic Beer Store',
-        'welcome_message': 'Welcome to the Non-alcoholic Beer Store!',
+        'welcome_message': 'Non-alcoholic Beer Store',
         'user': load_users(),
         'footer_text': 'Service for Non-alcoholic Beer Store. All rights reserved.'
     }
@@ -91,7 +91,7 @@ def register():
             ":last_name, :privilege);")
         connect = db.engine.connect()
         connect.execute(text(query), {'email': email, 'password': hashed_password, 'first_name': firstname,
-                                      'last_name': lastname})
+                                      'last_name': lastname, 'privilege': 0})
         connect.commit()
         connect.close()
         return redirect(url_for("login"))
@@ -164,14 +164,17 @@ def category(category_id):
     # Denna sida visar alla products med samma category_id och fungerar likadant som store
     productname = []
     prod_id = []
-    query = "SELECT item_name, id FROM products WHERE category_id = :category_id"
+    price = []
+    query = "SELECT item_name, id, price FROM products WHERE category_id = :category_id"
     connect = db.engine.connect()
     result = connect.execute(text(query), {'category_id': category_id})
     connect.close()
     for row in result:
+        formatdeci = f"\t{str(row[2]).replace('.',',')}"
         productname.append(row[0])
         prod_id.append(row[1])
-    products = zip(productname, prod_id)
+        price.append(formatdeci)
+    products = zip(productname, prod_id, price)
     return render_template("products.html", products=products)
 
 

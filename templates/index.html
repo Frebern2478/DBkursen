@@ -12,21 +12,19 @@
 <body>
 
     <header>
-        <h1>{{ header }}</h1>
+        <h2>{{ welcome_message }}</h2>
     </header>
 
     <main>
-        <h2>{{ welcome_message }}</h2>
-         <h1> Welcome {{user}}</h1>
-            <li><a href="{{ url_for('home') }}">Home</a></li>
             {% if current_user.is_authenticated %}
-                <li><a href="{{ url_for('settings') }}">Settings</a></li>
-                <li><a href="{{ url_for('store') }}">Store</a></li>
-                <li><a href="{{ url_for('shoppingcart') }}">Shopping Cart</a></li>
-                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+                <h1>{{user}}</h1>
+                <a href="{{ url_for('settings') }}">Settings</a>
+                <a href="{{ url_for('store') }}">Store</a>
+                <a href="{{ url_for('shoppingcart') }}">Shopping Cart</a>
+                <a href="{{ url_for('logout') }}">Logout</a>
             {% else %}
-                <li><a href="{{ url_for('login') }}">Login</a></li>
-                <li><a href="{{ url_for('register') }}">Register</a></li>
+                <a href="{{ url_for('login') }}">Login</a>
+                <a href="{{ url_for('register') }}">Register</a>
             {% endif %}
 
 
