@@ -49,7 +49,7 @@ def login():
     if request.method == "POST":
         useremail = request.form.get("email")
         password = request.form.get("password")
-        query = "SELECT * FROM user WHERE user.email = :useremail"
+        query = "SELECT * FROM users WHERE users.email = :useremail"
         connect = db.engine.connect()
         result = connect.execute(text(query), {'useremail': useremail})
         connect.close()
@@ -86,7 +86,7 @@ def register():
         hashed_password = generate_password_hash(password)
         # user = User(email=email, password=hashed_password, privilege="0")
         query = (
-            "INSERT INTO user (email, password, first_name, last_name, privilege) VALUES (:email, :password, "
+            "INSERT INTO users (email, password, first_name, last_name, privilege) VALUES (:email, :password, "
             ":first_name,"
             ":last_name, :privilege);")
         connect = db.engine.connect()
@@ -170,7 +170,7 @@ def category(category_id):
     result = connect.execute(text(query), {'category_id': category_id})
     connect.close()
     for row in result:
-        formatdeci = f"\t{str(row[2]).replace('.',',')}"
+        formatdeci = f"\t{str(row[2]).replace('.', ',')}"
         productname.append(row[0])
         prod_id.append(row[1])
         price.append(formatdeci)
@@ -192,11 +192,12 @@ def product(prod_id):
         productname = row[2]
         stock = row[3]
         price = row[4]
+        rate = rating(productID)
     # Detta sker när man lägger till shopping cart.
     if request.method == "POST":
         cart_items(productID, 1)  # TODO: Gör att man kan ändra kvantiteten.
         return redirect(url_for("shoppingcart"))
-    return render_template("productpage.html", productname=productname, stock=stock, price=price)
+    return render_template("productpage.html", productname=productname, stock=stock, price=price, rating=rate)
 
 
 @app.route("/shoppingcart")
@@ -206,14 +207,27 @@ def shoppingcart():
     return render_template("shoppingcart.html")
 
 
-def cart_items(pid, quantity):
+def cart_items(prod_id, quantity):
     # Lägga in items i cart_items
-    query = "INSERT INTO cart_items (product_id, quantity) VALUES (:product_id, :quantity)"
+    query = "INSERT INTO cart_items (user_id,product_id, quantity) VALUES (:user_id, :product_id, :quantity)"
     connect = db.engine.connect()
-    connect.execute(text(query), {'product_id': pid, 'quantity': quantity})
-    print("Lade till i cart_items: ", pid, " antal: " + str(quantity))
+    connect.execute(text(query), {'user_id': current_user.id, 'product_id': prod_id, 'quantity': quantity})
+    print("Lade till i cart_items: ", prod_id, " antal: " + str(quantity))
     connect.commit()
     connect.close()
+
+
+def rating(prod_id):
+    query = "SELECT * FROM ratings WHERE id = :prod_id"
+    connect = db.engine.connect()
+    result = connect.execute(text(query), {'prod_id': prod_id})
+    rows = result.fetchall()
+    connect.close()
+    if not rows:
+        return "0"
+    else:
+        for row in rows:
+            return row[0]
 
 
 if __name__ == '__main__':
