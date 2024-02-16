@@ -6,9 +6,31 @@
     <link rel="stylesheet" href="../static/styles.css">
 </head>
 <body>
+<header>
+        <h2>{{ welcome_message }}</h2>
+    </header>
     <h1>Shopping Cart</h1>
-    <ul>
-
-    </ul>
+    <h1>Product List</h1>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Price</th>
+                <th>Quantity</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for product in shopping_results %}
+                <tr>
+                    {% for item in product %}
+                        <td>{{ item }}</td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+<footer>
+        <p>&copy; 2024 {{ footer_text }}</p>
+    </footer>
 </body>
 </html>

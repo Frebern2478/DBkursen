@@ -8,7 +8,7 @@ from Login.User import User
 
 db = SQLAlchemy()
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:hej123@localhost:3306/dbkursen'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:root@localhost:3306/dbkursen'
 app.config["SECRET_KEY"] = urandom(20)  # TEST
 db.init_app(app)
 
@@ -44,6 +44,10 @@ def load_users():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    data = {
+        'title': 'Non-alcoholic Beer Store',
+        'footer_text': 'Service for Non-alcoholic Beer Store. All rights reserved.'
+    }
     # Login funktion, genom att kontrollera att användarens email, hashadelösenord och lösenord matchar så
     # hanteras inloggningen genom sessions-hanteraren skött av Flask-login.
     if request.method == "POST":
@@ -75,6 +79,10 @@ def login():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+    data = {
+        'title': 'Non-alcoholic Beer Store',
+        'footer_text': 'Service for Non-alcoholic Beer Store. All rights reserved.'
+    }
     # Registreringsfunktion, registrerar ett konto genom information som man uppger
     # på sidan, hashar lösenordet.
     # TODO: Hantera eventuell duplicerad uppgifter
@@ -95,7 +103,7 @@ def register():
         connect.commit()
         connect.close()
         return redirect(url_for("login"))
-    return render_template("register.html")
+    return render_template("register.html", **data)
 
 
 @app.route("/logout")
@@ -108,6 +116,10 @@ def logout():
 @app.route("/settings", methods=['GET', 'POST'])
 @login_required
 def settings():
+    data = {
+        'title': 'Non-alcoholic Beer Store',
+        'footer_text': 'Service for Non-alcoholic Beer Store. All rights reserved.'
+    }
     # Inställningar, där användaren kan lägga in mer uppgifter så som adress och dylikt.
     # Ifall duplicerade uppgifter skulle finnas så tas det itu med i samma query.
     if request.method == "POST":
@@ -138,11 +150,15 @@ def settings():
         if result:
             print("Fanns ett id")
         user_info = result.fetchone()
-        return render_template("settings.html", user_info=user_info)
+        return render_template("settings.html", user_info=user_info, **data)
 
 
 @app.route("/store")
 def store():
+    data = {
+        'title': 'Non-alcoholic Beer Store',
+        'footer_text': 'Service for Non-alcoholic Beer Store. All rights reserved.'
+    }
     # Denna sida visar alla product_categories, genom att iterera med en for loop igenom hela product_categories
     # så genereras länkar till alla product_categories i html:en.
     productcategory = []
@@ -156,11 +172,15 @@ def store():
         cat_id.append(row[1])
     # categories blir en tuple med kategori och id, för att kunna generera url med id:et
     categories = zip(productcategory, cat_id)
-    return render_template("store.html", categories=categories, user=User.getFirstName(user))
+    return render_template("store.html", categories=categories, user=User.getFirstName(user), **data)
 
 
 @app.route("/category/<int:category_id>")
 def category(category_id):
+    data = {
+        'title': 'Non-alcoholic Beer Store',
+        'footer_text': 'Service for Non-alcoholic Beer Store. All rights reserved.'
+    }
     # Denna sida visar alla products med samma category_id och fungerar likadant som store
     productname = []
     prod_id = []
@@ -175,11 +195,15 @@ def category(category_id):
         prod_id.append(row[1])
         price.append(formatdeci)
     products = zip(productname, prod_id, price)
-    return render_template("products.html", products=products)
+    return render_template("products.html", products=products, **data)
 
 
 @app.route("/product/<int:prod_id>", methods=['GET', 'POST'])
 def product(prod_id):
+    data = {
+        'title': 'Non-alcoholic Beer Store',
+        'footer_text': 'Service for Non-alcoholic Beer Store. All rights reserved.'
+    }
     # Självaste produktsidan. Här visas information om produkten så som hur många produkter i lager, pris
     # och ger möjlighet att lägga till i kundvagn.
     query = "SELECT * FROM products WHERE id = :prod_id"
@@ -196,15 +220,38 @@ def product(prod_id):
     # Detta sker när man lägger till shopping cart.
     if request.method == "POST":
         cart_items(productID, 1)  # TODO: Gör att man kan ändra kvantiteten.
-        return redirect(url_for("shoppingcart"))
-    return render_template("productpage.html", productname=productname, stock=stock, price=price, rating=rate)
+        return redirect(url_for("product", prod_id=prod_id))
+    return render_template("productpage.html", productname=productname, stock=stock, price=price, rating=rate, **data)
 
 
 @app.route("/shoppingcart")
 @login_required
 def shoppingcart():
+    data = {
+        'title': 'Non-alcoholic Beer Store',
+        'footer_text': 'Service for Non-alcoholic Beer Store. All rights reserved.'
+    }
+    uid = current_user.id
+    cart_query = "SELECT product_id, quantity FROM cart_items WHERE user_id = :current_user"
+    product_query = "SELECT item_name, price FROM products WHERE id = :product_id"
+    connect = db.engine.connect()
+    cart_result = connect.execute(text(cart_query), {'current_user': uid})
+
+    shopping_results = []
+    # (product_name, price, quantity)
+
+    for item in cart_result:
+        product_id = item[0]
+        quantity = item[1]
+        product_result = connect.execute(text(product_query), {'product_id': product_id})
+        for product in product_result:
+            shopping_results.append((product[0], str(product[1]), quantity))
+
+
+    connect.close()
+
     # TODO: Fixa shopping cart.
-    return render_template("shoppingcart.html")
+    return render_template("shoppingcart.html", shopping_results=shopping_results, **data)
 
 
 def cart_items(prod_id, quantity):
