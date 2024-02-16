@@ -45,7 +45,7 @@ def load_users():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     data = {
-        'title': 'Non-alcoholic Beer Store',
+        'welcome_message': 'Non-alcoholic Beer Store',
         'footer_text': 'Service for Non-alcoholic Beer Store. All rights reserved.'
     }
     # Login funktion, genom att kontrollera att användarens email, hashadelösenord och lösenord matchar så
@@ -74,13 +74,13 @@ def login():
                     login_user(user)
                     print(text(query))
                     return redirect(url_for("home"))
-    return render_template("login.html")
+    return render_template("login.html", **data)
 
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     data = {
-        'title': 'Non-alcoholic Beer Store',
+        'welcome_message': 'Non-alcoholic Beer Store',
         'footer_text': 'Service for Non-alcoholic Beer Store. All rights reserved.'
     }
     # Registreringsfunktion, registrerar ett konto genom information som man uppger
@@ -117,7 +117,7 @@ def logout():
 @login_required
 def settings():
     data = {
-        'title': 'Non-alcoholic Beer Store',
+        'welcome_message': 'Non-alcoholic Beer Store',
         'footer_text': 'Service for Non-alcoholic Beer Store. All rights reserved.'
     }
     # Inställningar, där användaren kan lägga in mer uppgifter så som adress och dylikt.
@@ -156,7 +156,7 @@ def settings():
 @app.route("/store")
 def store():
     data = {
-        'title': 'Non-alcoholic Beer Store',
+        'welcome_message': 'Non-alcoholic Beer Store',
         'footer_text': 'Service for Non-alcoholic Beer Store. All rights reserved.'
     }
     # Denna sida visar alla product_categories, genom att iterera med en for loop igenom hela product_categories
@@ -178,7 +178,7 @@ def store():
 @app.route("/category/<int:category_id>")
 def category(category_id):
     data = {
-        'title': 'Non-alcoholic Beer Store',
+        'welcome_message': 'Non-alcoholic Beer Store',
         'footer_text': 'Service for Non-alcoholic Beer Store. All rights reserved.'
     }
     # Denna sida visar alla products med samma category_id och fungerar likadant som store
@@ -201,7 +201,7 @@ def category(category_id):
 @app.route("/product/<int:prod_id>", methods=['GET', 'POST'])
 def product(prod_id):
     data = {
-        'title': 'Non-alcoholic Beer Store',
+        'welcome_message': 'Non-alcoholic Beer Store',
         'footer_text': 'Service for Non-alcoholic Beer Store. All rights reserved.'
     }
     # Självaste produktsidan. Här visas information om produkten så som hur många produkter i lager, pris
@@ -228,7 +228,7 @@ def product(prod_id):
 @login_required
 def shoppingcart():
     data = {
-        'title': 'Non-alcoholic Beer Store',
+        'welcome_message': 'Non-alcoholic Beer Store',
         'footer_text': 'Service for Non-alcoholic Beer Store. All rights reserved.'
     }
     uid = current_user.id
