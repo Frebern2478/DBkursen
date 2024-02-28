@@ -12,6 +12,19 @@
     <h1>{{ productname }}</h1>
     <ul>
         Rating: {{ rating }}
+        <form action="/rate-product" method="POST">
+         <input type="hidden" name="prod_id" value="{{ prod_id }}">
+        <label for="rating">Rate this product:</label>
+        <select name="rating" id="rating">
+            <option value="0">0</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+        </select>
+        <button type="submit">Submit</button>
+    </form>
         Available in stock: {{ stock }}
         Price: {{ price }}
         <form action="#" method="POST">
@@ -20,6 +33,14 @@
         </form>
         <li><a href="{{ url_for('shoppingcart') }}">Shopping Cart</a></li>
     </ul>
+    <article>
+        <form action="/add-comment" method="POST">
+            <input type="hidden" name="prod_id" value="{{ prod_id }}">
+            <textarea name="comment" placeholder="Skriv en kommentar"></textarea>
+            <button type="submit">Skicka kommentar</button>
+        </form>
+          {{ comment }}
+    </article>
     <footer>
         <p>&copy; 2024 {{ footer_text }}</p>
     </footer>

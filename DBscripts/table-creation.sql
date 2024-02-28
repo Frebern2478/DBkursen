@@ -35,17 +35,23 @@ CREATE TABLE products (
 );
 
 CREATE TABLE comments (
-	id INT AUTO_INCREMENT,
+    id INT AUTO_INCREMENT,
+    prod_id INT,
+	user_id INT,
     comment VARCHAR(255),
-    PRIMARY KEY(id)
+    PRIMARY KEY(id),
+    FOREIGN KEY(prod_id) REFERENCES products(id),
+    FOREIGN KEY(user_id) REFERENCES users(id)
 );
 
 CREATE TABLE ratings (
 	id INT AUTO_INCREMENT,
-    comment_id INT,
+    prod_id INT,
+    user_id INT,
     rating INT,
     PRIMARY KEY(id),
-    FOREIGN KEY(comment_id) REFERENCES comments(id)
+    FOREIGN KEY(prod_id) REFERENCES products(id),
+    FOREIGN KEY(user_id) REFERENCES users(id)
 );
 
 CREATE TABLE cart_items (

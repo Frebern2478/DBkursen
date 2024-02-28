@@ -8,7 +8,7 @@ from Login.User import User
 
 db = SQLAlchemy()
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:root@localhost:3306/dbkursen'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:hej123@localhost:3306/dbkursen'
 app.config["SECRET_KEY"] = urandom(20)  # TEST
 db.init_app(app)
 
@@ -216,12 +216,14 @@ def product(prod_id):
         productname = row[2]
         stock = row[3]
         price = row[4]
-        rate = rating(productID)
+        rate = getrating(productID)
+        comment = getcomment(productID)
     # Detta sker när man lägger till shopping cart.
     if request.method == "POST":
         cart_items(productID, 1)  # TODO: Gör att man kan ändra kvantiteten.
         return redirect(url_for("product", prod_id=prod_id))
-    return render_template("productpage.html", productname=productname, stock=stock, price=price, rating=rate, **data)
+    return render_template("productpage.html", prod_id=prod_id, productname=productname, stock=stock, price=price,
+                           rating=rate, comment=comment, **data)
 
 
 @app.route("/shoppingcart")
@@ -247,7 +249,6 @@ def shoppingcart():
         for product in product_result:
             shopping_results.append((product[0], str(product[1]), quantity))
 
-
     connect.close()
 
     # TODO: Fixa shopping cart.
@@ -264,8 +265,15 @@ def cart_items(prod_id, quantity):
     connect.close()
 
 
-def rating(prod_id):
-    query = "SELECT * FROM ratings WHERE id = :prod_id"
+def getUserName(userid):
+    query = "SELECT first_name, last_name FROM users WHERE id = :id"
+    connect = db.engine.connect()
+    result = connect.execute(text(query), {'id': userid})
+    return result.fetchone()
+
+
+def getrating(prod_id):
+    query = "SELECT AVG(rating) FROM ratings WHERE id = :prod_id"
     connect = db.engine.connect()
     result = connect.execute(text(query), {'prod_id': prod_id})
     rows = result.fetchall()
@@ -274,7 +282,53 @@ def rating(prod_id):
         return "0"
     else:
         for row in rows:
-            return row[0]
+            return int(row[0])
+
+
+@app.route('/rate-product', methods=['POST'])
+def rateproduct():
+    prod_id = request.form.get('prod_id')
+    rating = request.form.get('rating')
+    print(prod_id)
+    query = "INSERT into ratings(prod_id, user_id, rating) VALUES (:prod_id, :user_id, :rating)"
+    connect = db.engine.connect()
+    connect.execute(text(query), {'user_id': current_user.id ,'prod_id': prod_id, 'rating': rating})
+    connect.commit()
+    connect.close()
+    return redirect(url_for("product", prod_id=prod_id))
+
+
+@app.route('/add-comment', methods=['POST'])
+def addcomment():
+    prod_id = request.form.get('prod_id')
+    comment = request.form.get('comment')
+    print(prod_id)
+    query = "INSERT into comments(prod_id, user_id, comment) VALUES (:prod_id, :user_id, :comment)"
+    connect = db.engine.connect()
+    connect.execute(text(query), {'prod_id': prod_id, 'user_id': current_user.id, 'comment': comment})
+    connect.commit()
+    connect.close()
+    return redirect(url_for("product", prod_id=prod_id))
+
+
+def getcomment(prod_id):
+    query = "SELECT comment, user_id FROM comments WHERE prod_id = :prod_id"
+    connect = db.engine.connect()
+    comments = connect.execute(text(query), {'prod_id': prod_id})
+    rows = comments.fetchall()
+    connect.close()
+
+    if not rows:
+        return "Inga kommentarer ännu!"
+    else:
+        comment_list = []
+        for row in rows:
+            comment = row[0]
+            user_id = row[1]
+            username = getUserName(user_id)
+            #print(comment, user_id, username)
+            comment_list.append(comment + " Skriven av: " + str(username))
+        return comment_list
 
 
 if __name__ == '__main__':
