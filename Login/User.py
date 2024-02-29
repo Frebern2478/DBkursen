@@ -1,4 +1,8 @@
-from flask_login import UserMixin
+from flask_login import UserMixin, AnonymousUserMixin
+
+
+class AnonymousUser(AnonymousUserMixin):
+    id = None
 
 
 class User(UserMixin):

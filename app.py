@@ -4,7 +4,7 @@ from flask_login import *
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text
 from werkzeug.security import generate_password_hash, check_password_hash
-from Login.User import User
+from Login.User import User, AnonymousUser
 
 db = SQLAlchemy()
 app = Flask(__name__)
@@ -14,6 +14,7 @@ db.init_app(app)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
+login_manager.anonymous_user = AnonymousUser
 user = User()
 
 
@@ -273,15 +274,16 @@ def getUserName(userid):
 
 
 def getrating(prod_id):
-    query = "SELECT AVG(rating) FROM ratings WHERE id = :prod_id"
+    query = "SELECT AVG(rating) FROM ratings WHERE prod_id = :prod_id"
     connect = db.engine.connect()
     result = connect.execute(text(query), {'prod_id': prod_id})
     rows = result.fetchall()
     connect.close()
-    if not rows:
-        return "0"
-    else:
-        for row in rows:
+    for row in rows:
+        # Kollar ifall result är tomt.
+        if row[0] is None:
+            return 0
+        else:
             return int(row[0])
 
 
@@ -289,7 +291,7 @@ def getrating(prod_id):
 def rateproduct():
     prod_id = request.form.get('prod_id')
     rating = request.form.get('rating')
-    print(prod_id)
+    #print(prod_id)
     query = "INSERT into ratings(prod_id, user_id, rating) VALUES (:prod_id, :user_id, :rating)"
     connect = db.engine.connect()
     connect.execute(text(query), {'user_id': current_user.id ,'prod_id': prod_id, 'rating': rating})
