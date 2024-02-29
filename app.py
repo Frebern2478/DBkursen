@@ -8,7 +8,7 @@ from Login.User import User, AnonymousUser
 
 db = SQLAlchemy()
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:hej123@localhost:3306/dbkursen'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:root@localhost:3306/dbkursen'
 app.config["SECRET_KEY"] = urandom(20)  # TEST
 db.init_app(app)
 
@@ -275,6 +275,71 @@ def getUserName(userid):
 
 def getrating(prod_id):
     query = "SELECT AVG(rating) FROM ratings WHERE prod_id = :prod_id"
+@app.route('/checkout', methods=['GET', 'POST'])
+@login_required
+
+def checkout():
+    data = {
+        'welcome_message': 'Non-alcoholic Beer Store',
+        'footer_text': 'Service for Non-alcoholic Beer Store. All rights reserved.'
+    }
+    uid = current_user.id
+    sum_query = ("SELECT quantity, product_id FROM cart_items WHERE user_id = :current_user")
+    connect = db.engine.connect()
+    sum_result = connect.execute(text(sum_query), {'current_user': uid})
+    sum_total = 0
+    for quanprod in sum_result:
+        price_query = ("SELECT price FROM products WHERE id = :product_id")
+        connect = db.engine.connect()
+        price_result = connect.execute(text(price_query), {'product_id': quanprod[1]})
+        for result in price_result:
+            # something something multiply with quantity...
+            sum_total += float(result[0])
+
+    connect.close()
+    if request.method == "POST":
+        # Ifall inte information om användarens adress etc finns eller finns så uppdatera.
+        uid = current_user.id
+        address = request.form.get("StreetAddress")
+        zipcode = request.form.get("zip_code")
+        region = request.form.get("Region")
+        city = request.form.get("City")
+        phone_nr = request.form.get("PhoneNumber")
+        query = ("INSERT INTO shipping_address (id, street_address, zip_code, region, city, phone_nr) VALUES (:user_id, "
+                 ":street_address, :zip_code, :region, :city, :phone_nr) ON DUPLICATE KEY UPDATE street_address = VALUES("
+                 "street_address), zip_code = VALUES(zip_code), region = VALUES(region), city = VALUES(city), phone_nr = VALUES(phone_nr);")
+        connect = db.engine.connect()
+        connect.execute(text(query),
+                        {'user_id': uid, 'street_address': address, 'zip_code': zipcode, 'region': region,
+                         'city': city, 'phone_nr': phone_nr})
+        connect.commit()
+        query = ("DELETE FROM cart_items WHERE user_id = :user_id;")
+        connect = db.engine.connect()
+        connect.execute(text(query), {'user_id': uid})
+        connect.close()
+        return redirect(url_for("thankyou"))
+    else:
+        # Detta gör så ifall det redan finns information om användarens adress etc så läggs det in automatiskt
+        # genom att hämta det från databasen.
+        uid = current_user.id
+        query = "SELECT street_address, zip_code, region, city, phone_nr FROM address WHERE user_id = :user_id"
+        connect = db.engine.connect()
+        result = connect.execute(text(query), {'user_id': uid})
+        connect.close()
+        user_info = result.fetchone()
+        return render_template("checkout.html", user_info=user_info, sum_total=sum_total, **data)
+
+@app.route('/thankyou')
+def thankyou():
+    data = {
+        'title': 'Non-alcoholic Beer Store',
+        'welcome_message': 'Thank you for shopping Non-alcoholic Beer!',
+        'footer_text': 'Service for Non-alcoholic Beer Store. All rights reserved.'
+    }
+    return render_template("thankyou.html", **data)
+
+def rating(prod_id):
+    query = "SELECT * FROM ratings WHERE id = :prod_id"
     connect = db.engine.connect()
     result = connect.execute(text(query), {'prod_id': prod_id})
     rows = result.fetchall()
