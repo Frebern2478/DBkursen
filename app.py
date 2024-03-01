@@ -223,15 +223,19 @@ def product(prod_id):
     # Detta sker när man lägger till shopping cart.
     if request.method == "POST":
         quantity = request.form.get("quantity")
+        # FASEN VAD FUL KOD, här kollar den ifall quantity inte är angett, då kommer den som en None.
         if not quantity:
             quantity = 1
         else:
+            # Här måste vi casta om quantity till int, för det går inte jämföra str med int.
             quantity = int(quantity)
+        # Vi kan inte beställa mer än vad som finns i lagret.
         if quantity >= int(stock):
-            flash("Du kan inte handla fler än som finns i lager.")
+            # Castar om stock till int också och jämför.
+            flash("Du kan inte handla fler än som finns i lager.")  # Vet inte ens om flash funkar.
             return redirect(url_for("product", prod_id=prod_id))
         else:
-            cart_items(productID, quantity)  # TODO: Gör att man kan ändra kvantiteten.
+            cart_items(productID, quantity)
             return redirect(url_for("product", prod_id=prod_id))
     return render_template("productpage.html", prod_id=prod_id, productname=productname, stock=stock, price=price,
                            rating=rate, comment=comment, **data)
@@ -249,20 +253,14 @@ def shoppingcart():
     product_query = "SELECT item_name, price FROM products WHERE id = :product_id"
     connect = db.engine.connect()
     cart_result = connect.execute(text(cart_query), {'current_user': uid})
-
     shopping_results = []
-    # (product_name, price, quantity)
-
     for item in cart_result:
         product_id = item[0]
         quantity = item[1]
         product_result = connect.execute(text(product_query), {'product_id': product_id})
         for product in product_result:
             shopping_results.append((product[0], str(product[1]), quantity))
-
     connect.close()
-
-    # TODO: Fixa shopping cart.
     return render_template("shoppingcart.html", shopping_results=shopping_results, **data)
 
 
@@ -278,6 +276,7 @@ def cart_items(prod_id, quantity):
 
 
 def getUserName(userid):
+    # Denna funktion används för att få ut för och efternamn till användaren.
     query = "SELECT first_name, last_name FROM users WHERE id = :id"
     connect = db.engine.connect()
     result = connect.execute(text(query), {'id': userid})
@@ -293,7 +292,6 @@ def checkout():
     }
     uid = current_user.id
     summa = sumtotal(uid)
-
     if request.method == "POST":
         # Ifall inte information om användarens adress etc finns eller finns så uppdatera.
         uid = current_user.id
@@ -311,13 +309,14 @@ def checkout():
                          'city': city})
         connect.commit()
         connect.close()
+        # Här tar vi bort varorna från lagret.
         deductquantity(uid)
         # Tar bort från cart_items och lägger till i checkout databsen.
         # TODO: Ett problem är ju att vi vet inte nu vad kunden har beställt.
         query = ("INSERT INTO checkout(user_id, shipping_id, payment_id, sum_total) VALUES (:user_id, :shipping_id, "
                  ":payment_id, :sum_total);" "DELETE FROM cart_items WHERE user_id = :user_id;")
         connect = db.engine.connect()
-        # TODO: Payment_id är ju ifall de använder swish etc, så den är hårdkodat.
+        # TODO: Payment_id är ju ifall de använder swish etc, och den är inte gjord än, så vi hårdkodar här.
         # Kanske ta bort shipping_id? den verkar vara överflödig.
         connect.execute(text(query), {'user_id': uid, 'shipping_id': uid, 'payment_id': 1, 'sum_total': summa})
         connect.commit()
@@ -351,8 +350,8 @@ def getrating(prod_id):
     rows = result.fetchall()
     connect.close()
     for row in rows:
-        # Kollar ifall result är tomt.
-        if row[0] is None:
+        # Kollar ifall result är av None.
+        if not row[0]:
             return 0
         else:
             return int(row[0])
@@ -384,31 +383,27 @@ def sumtotal(uid):
             # something something multiply with quantity...
             sum_total += float(result[0]) * quanprod[0]
     connect.close()
-    print(sum_total)
+    # print(sum_total)
     return sum_total
 
 
 def deductquantity(uid):
     connect = db.engine.connect()
-    # Get cart items for the given user_id
+    # Få itemsen givet uid
     query = "SELECT quantity, product_id FROM cart_items WHERE user_id = :user_id"
     result = connect.execute(text(query), {'user_id': uid})
     cart_items = result.fetchall()
-
     for quantity, product_id in cart_items:
-        # Get current stock for the product
+        # Få hur många är i lager från products
         product_query = "SELECT in_stock FROM products WHERE id = :product_id"
         product_result = connect.execute(text(product_query), {'product_id': product_id})
         product = product_result.fetchone()
-
         if product:
             in_stock = product[0]
             new_stock = max(0, in_stock - quantity)
-            # Update stock in the products table
+            # Uppdatera i products
             update_query = "UPDATE products SET in_stock = :in_stock WHERE id = :product_id"
             connect.execute(text(update_query), {'in_stock': new_stock, 'product_id': product_id})
-
-    # Commit and close
     connect.commit()
     connect.close()
 
@@ -417,7 +412,7 @@ def deductquantity(uid):
 def addcomment():
     prod_id = request.form.get('prod_id')
     comment = request.form.get('comment')
-    print(prod_id)
+    # print(prod_id)
     query = "INSERT into comments(prod_id, user_id, comment) VALUES (:prod_id, :user_id, :comment)"
     connect = db.engine.connect()
     connect.execute(text(query), {'prod_id': prod_id, 'user_id': current_user.id, 'comment': comment})
@@ -432,17 +427,19 @@ def getcomment(prod_id):
     comments = connect.execute(text(query), {'prod_id': prod_id})
     rows = comments.fetchall()
     connect.close()
-
     if not rows:
         return "Inga kommentarer ännu!"
     else:
-        comment_list = []
+        comment_list = ""
         for row in rows:
             comment = row[0]
             user_id = row[1]
             username = getUserName(user_id)
+            firstname = username[0]
+            lastname = username[1]
             # print(comment, user_id, username)
-            comment_list.append(comment + " Skriven av: " + str(username))
+            comment_list += comment + " Skriven av: " + firstname + " " + lastname + '<br>'
+        print(comment_list)
         return comment_list
 
 

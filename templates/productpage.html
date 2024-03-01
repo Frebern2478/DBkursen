@@ -40,7 +40,7 @@
             <textarea name="comment" placeholder="Skriv en kommentar"></textarea>
             <button type="submit">Skicka kommentar</button>
         </form>
-          {{ comment }}
+          {{ comment | safe }}
     </article>
     <footer>
         <p>&copy; 2024 {{ footer_text }}</p>
