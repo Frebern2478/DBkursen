@@ -8,7 +8,7 @@ from Login.User import User, AnonymousUser
 
 db = SQLAlchemy()
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:root@localhost:3306/dbkursen'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:hej123@localhost:3306/dbkursen'
 app.config["SECRET_KEY"] = urandom(20)  # TEST
 db.init_app(app)
 
@@ -207,6 +207,7 @@ def product(prod_id):
     }
     # Självaste produktsidan. Här visas information om produkten så som hur många produkter i lager, pris
     # och ger möjlighet att lägga till i kundvagn.
+
     query = "SELECT * FROM products WHERE id = :prod_id"
     connect = db.engine.connect()
     result = connect.execute(text(query), {'prod_id': prod_id})
@@ -221,8 +222,17 @@ def product(prod_id):
         comment = getcomment(productID)
     # Detta sker när man lägger till shopping cart.
     if request.method == "POST":
-        cart_items(productID, 1)  # TODO: Gör att man kan ändra kvantiteten.
-        return redirect(url_for("product", prod_id=prod_id))
+        quantity = request.form.get("quantity")
+        if not quantity:
+            quantity = 1
+        else:
+            quantity = int(quantity)
+        if quantity >= int(stock):
+            flash("Du kan inte handla fler än som finns i lager.")
+            return redirect(url_for("product", prod_id=prod_id))
+        else:
+            cart_items(productID, quantity)  # TODO: Gör att man kan ändra kvantiteten.
+            return redirect(url_for("product", prod_id=prod_id))
     return render_template("productpage.html", prod_id=prod_id, productname=productname, stock=stock, price=price,
                            rating=rate, comment=comment, **data)
 
@@ -258,7 +268,8 @@ def shoppingcart():
 
 def cart_items(prod_id, quantity):
     # Lägga in items i cart_items
-    query = "INSERT INTO cart_items (user_id,product_id, quantity) VALUES (:user_id, :product_id, :quantity)"
+    query = ("INSERT INTO cart_items (user_id, product_id, quantity) VALUES (:user_id, :product_id, :quantity) ON "
+             "DUPLICATE KEY UPDATE quantity = quantity + :quantity")
     connect = db.engine.connect()
     connect.execute(text(query), {'user_id': current_user.id, 'product_id': prod_id, 'quantity': quantity})
     print("Lade till i cart_items: ", prod_id, " antal: " + str(quantity))
@@ -273,30 +284,16 @@ def getUserName(userid):
     return result.fetchone()
 
 
-def getrating(prod_id):
-    query = "SELECT AVG(rating) FROM ratings WHERE prod_id = :prod_id"
 @app.route('/checkout', methods=['GET', 'POST'])
 @login_required
-
 def checkout():
     data = {
         'welcome_message': 'Non-alcoholic Beer Store',
         'footer_text': 'Service for Non-alcoholic Beer Store. All rights reserved.'
     }
     uid = current_user.id
-    sum_query = ("SELECT quantity, product_id FROM cart_items WHERE user_id = :current_user")
-    connect = db.engine.connect()
-    sum_result = connect.execute(text(sum_query), {'current_user': uid})
-    sum_total = 0
-    for quanprod in sum_result:
-        price_query = ("SELECT price FROM products WHERE id = :product_id")
-        connect = db.engine.connect()
-        price_result = connect.execute(text(price_query), {'product_id': quanprod[1]})
-        for result in price_result:
-            # something something multiply with quantity...
-            sum_total += float(result[0])
+    summa = sumtotal(uid)
 
-    connect.close()
     if request.method == "POST":
         # Ifall inte information om användarens adress etc finns eller finns så uppdatera.
         uid = current_user.id
@@ -304,30 +301,38 @@ def checkout():
         zipcode = request.form.get("zip_code")
         region = request.form.get("Region")
         city = request.form.get("City")
-        phone_nr = request.form.get("PhoneNumber")
-        query = ("INSERT INTO shipping_address (id, street_address, zip_code, region, city, phone_nr) VALUES (:user_id, "
-                 ":street_address, :zip_code, :region, :city, :phone_nr) ON DUPLICATE KEY UPDATE street_address = VALUES("
-                 "street_address), zip_code = VALUES(zip_code), region = VALUES(region), city = VALUES(city), phone_nr = VALUES(phone_nr);")
+        query = (
+            "INSERT INTO shipping_address (id, street_address, zip_code, region, city) VALUES (:user_id, "
+            ":street_address, :zip_code, :region, :city) ON DUPLICATE KEY UPDATE street_address = VALUES("
+            "street_address), zip_code = VALUES(zip_code), region = VALUES(region), city = VALUES(city);")
         connect = db.engine.connect()
         connect.execute(text(query),
                         {'user_id': uid, 'street_address': address, 'zip_code': zipcode, 'region': region,
-                         'city': city, 'phone_nr': phone_nr})
+                         'city': city})
         connect.commit()
-        query = ("DELETE FROM cart_items WHERE user_id = :user_id;")
+        connect.close()
+        deductquantity(uid)
+        # Tar bort från cart_items och lägger till i checkout databsen.
+        # TODO: Ett problem är ju att vi vet inte nu vad kunden har beställt.
+        query = ("INSERT INTO checkout(user_id, shipping_id, payment_id, sum_total) VALUES (:user_id, :shipping_id, "
+                 ":payment_id, :sum_total);" "DELETE FROM cart_items WHERE user_id = :user_id;")
         connect = db.engine.connect()
-        connect.execute(text(query), {'user_id': uid})
+        # TODO: Payment_id är ju ifall de använder swish etc, så den är hårdkodat.
+        # Kanske ta bort shipping_id? den verkar vara överflödig.
+        connect.execute(text(query), {'user_id': uid, 'shipping_id': uid, 'payment_id': 1, 'sum_total': summa})
+        connect.commit()
         connect.close()
         return redirect(url_for("thankyou"))
     else:
         # Detta gör så ifall det redan finns information om användarens adress etc så läggs det in automatiskt
         # genom att hämta det från databasen.
-        uid = current_user.id
-        query = "SELECT street_address, zip_code, region, city, phone_nr FROM address WHERE user_id = :user_id"
+        query = "SELECT street_address, zip_code, region, city FROM address WHERE user_id = :user_id"
         connect = db.engine.connect()
         result = connect.execute(text(query), {'user_id': uid})
         connect.close()
         user_info = result.fetchone()
-        return render_template("checkout.html", user_info=user_info, sum_total=sum_total, **data)
+        return render_template("checkout.html", user_info=user_info, sum_total=summa, **data)
+
 
 @app.route('/thankyou')
 def thankyou():
@@ -338,8 +343,9 @@ def thankyou():
     }
     return render_template("thankyou.html", **data)
 
-def rating(prod_id):
-    query = "SELECT * FROM ratings WHERE id = :prod_id"
+
+def getrating(prod_id):
+    query = "SELECT AVG(rating) FROM ratings WHERE prod_id = :prod_id"
     connect = db.engine.connect()
     result = connect.execute(text(query), {'prod_id': prod_id})
     rows = result.fetchall()
@@ -356,13 +362,55 @@ def rating(prod_id):
 def rateproduct():
     prod_id = request.form.get('prod_id')
     rating = request.form.get('rating')
-    #print(prod_id)
+    # print(prod_id)
     query = "INSERT into ratings(prod_id, user_id, rating) VALUES (:prod_id, :user_id, :rating)"
     connect = db.engine.connect()
-    connect.execute(text(query), {'user_id': current_user.id ,'prod_id': prod_id, 'rating': rating})
+    connect.execute(text(query), {'user_id': current_user.id, 'prod_id': prod_id, 'rating': rating})
     connect.commit()
     connect.close()
     return redirect(url_for("product", prod_id=prod_id))
+
+
+def sumtotal(uid):
+    sum_query = "SELECT quantity, product_id FROM cart_items WHERE user_id = :current_user"
+    connect = db.engine.connect()
+    sum_result = connect.execute(text(sum_query), {'current_user': uid})
+    sum_total = 0
+    for quanprod in sum_result:
+        price_query = "SELECT price FROM products WHERE id = :product_id"
+        connect = db.engine.connect()
+        price_result = connect.execute(text(price_query), {'product_id': quanprod[1]})
+        for result in price_result:
+            # something something multiply with quantity...
+            sum_total += float(result[0]) * quanprod[0]
+    connect.close()
+    print(sum_total)
+    return sum_total
+
+
+def deductquantity(uid):
+    connect = db.engine.connect()
+    # Get cart items for the given user_id
+    query = "SELECT quantity, product_id FROM cart_items WHERE user_id = :user_id"
+    result = connect.execute(text(query), {'user_id': uid})
+    cart_items = result.fetchall()
+
+    for quantity, product_id in cart_items:
+        # Get current stock for the product
+        product_query = "SELECT in_stock FROM products WHERE id = :product_id"
+        product_result = connect.execute(text(product_query), {'product_id': product_id})
+        product = product_result.fetchone()
+
+        if product:
+            in_stock = product[0]
+            new_stock = max(0, in_stock - quantity)
+            # Update stock in the products table
+            update_query = "UPDATE products SET in_stock = :in_stock WHERE id = :product_id"
+            connect.execute(text(update_query), {'in_stock': new_stock, 'product_id': product_id})
+
+    # Commit and close
+    connect.commit()
+    connect.close()
 
 
 @app.route('/add-comment', methods=['POST'])
@@ -393,7 +441,7 @@ def getcomment(prod_id):
             comment = row[0]
             user_id = row[1]
             username = getUserName(user_id)
-            #print(comment, user_id, username)
+            # print(comment, user_id, username)
             comment_list.append(comment + " Skriven av: " + str(username))
         return comment_list
 

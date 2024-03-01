@@ -69,7 +69,6 @@ CREATE TABLE shipping_address (
     zip_code INT,
     city VARCHAR(100),
     region VARCHAR(100),
-    phone_nr VARCHAR(50),
     PRIMARY KEY(id)
 );
 
