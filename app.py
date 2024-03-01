@@ -439,7 +439,7 @@ def getcomment(prod_id):
             lastname = username[1]
             # print(comment, user_id, username)
             comment_list += comment + " Skriven av: " + firstname + " " + lastname + '<br>'
-        print(comment_list)
+        #print(comment_list)
         return comment_list
 
 
