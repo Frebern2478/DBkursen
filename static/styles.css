@@ -5,6 +5,13 @@
     margin: 0;
     padding: 0;
 }
+@keyframes test {
+  0%   {background-color:red;}
+  25%  {background-color:yellow;}
+  50%  {background-color:blue;}
+  75%  {background-color:green; }
+  100% {background-color:red;}
+}
 
 body {
     font-family: 'Roboto', sans-serif;
@@ -194,4 +201,9 @@ a {
 .form button:hover {
     background-color: #fff
 }
-
+.flashes{
+    border-style: solid;
+    animation-name: test;
+    animation-duration: 1s;
+    text-align: center;
+}

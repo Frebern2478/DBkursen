@@ -10,6 +10,16 @@
         <h2>{{ welcome_message }}</h2>
     </header>
     <h1>{{ productname }}</h1>
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class=flashes>
+           {% for message in messages %}
+            <li>{{ message }}</li>
+            {% endfor %}
+            </div>
+    {% endif %}
+    {% endwith %}
+
     <ul>
         Rating: {{ rating }}
         <form action="/rate-product" method="POST">

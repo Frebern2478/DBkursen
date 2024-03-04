@@ -1,4 +1,6 @@
 from os import urandom
+
+import nh3
 from flask import *
 from flask_login import *
 from flask_sqlalchemy import SQLAlchemy
@@ -26,13 +28,7 @@ def load_user(user_id):
 @app.route('/')
 def home():
     # Index sida / Start-sida.
-    data = {
-        'title': 'Non-alcoholic Beer Store',
-        'welcome_message': 'Non-alcoholic Beer Store',
-        'user': load_users(),
-        'footer_text': 'Service for Non-alcoholic Beer Store. All rights reserved.'
-    }
-    return render_template('index.html', **data)
+    return render_template('index.html', **getdatatemplate())
 
 
 def load_users():
@@ -45,10 +41,6 @@ def load_users():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    data = {
-        'welcome_message': 'Non-alcoholic Beer Store',
-        'footer_text': 'Service for Non-alcoholic Beer Store. All rights reserved.'
-    }
     # Login funktion, genom att kontrollera att användarens email, hashadelösenord och lösenord matchar så
     # hanteras inloggningen genom sessions-hanteraren skött av Flask-login.
     if request.method == "POST":
@@ -69,21 +61,15 @@ def login():
                 User.setUser(self=user, id=userid, first_name=firstname, last_name=lastname, email=email)
                 if request.form.get("RememberMe"):
                     login_user(user, remember=True)
-                    print(text(query))
                     return redirect(url_for("home"))
                 else:
                     login_user(user)
-                    print(text(query))
                     return redirect(url_for("home"))
-    return render_template("login.html", **data)
+    return render_template("login.html", **getdatatemplate())
 
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    data = {
-        'welcome_message': 'Non-alcoholic Beer Store',
-        'footer_text': 'Service for Non-alcoholic Beer Store. All rights reserved.'
-    }
     # Registreringsfunktion, registrerar ett konto genom information som man uppger
     # på sidan, hashar lösenordet.
     # TODO: Hantera eventuell duplicerad uppgifter
@@ -104,7 +90,7 @@ def register():
         connect.commit()
         connect.close()
         return redirect(url_for("login"))
-    return render_template("register.html", **data)
+    return render_template("register.html", getdatatemplate())
 
 
 @app.route("/logout")
@@ -117,10 +103,6 @@ def logout():
 @app.route("/settings", methods=['GET', 'POST'])
 @login_required
 def settings():
-    data = {
-        'welcome_message': 'Non-alcoholic Beer Store',
-        'footer_text': 'Service for Non-alcoholic Beer Store. All rights reserved.'
-    }
     # Inställningar, där användaren kan lägga in mer uppgifter så som adress och dylikt.
     # Ifall duplicerade uppgifter skulle finnas så tas det itu med i samma query.
     if request.method == "POST":
@@ -148,18 +130,12 @@ def settings():
         connect = db.engine.connect()
         result = connect.execute(text(query), {'user_id': uid})
         connect.close()
-        if result:
-            print("Fanns ett id")
         user_info = result.fetchone()
-        return render_template("settings.html", user_info=user_info, **data)
+        return render_template("settings.html", user_info=user_info, **getdatatemplate())
 
 
 @app.route("/store")
 def store():
-    data = {
-        'welcome_message': 'Non-alcoholic Beer Store',
-        'footer_text': 'Service for Non-alcoholic Beer Store. All rights reserved.'
-    }
     # Denna sida visar alla product_categories, genom att iterera med en for loop igenom hela product_categories
     # så genereras länkar till alla product_categories i html:en.
     productcategory = []
@@ -173,15 +149,11 @@ def store():
         cat_id.append(row[1])
     # categories blir en tuple med kategori och id, för att kunna generera url med id:et
     categories = zip(productcategory, cat_id)
-    return render_template("store.html", categories=categories, user=User.getFirstName(user), **data)
+    return render_template("store.html", categories=categories, **getdatatemplate())
 
 
 @app.route("/category/<int:category_id>")
 def category(category_id):
-    data = {
-        'welcome_message': 'Non-alcoholic Beer Store',
-        'footer_text': 'Service for Non-alcoholic Beer Store. All rights reserved.'
-    }
     # Denna sida visar alla products med samma category_id och fungerar likadant som store
     productname = []
     prod_id = []
@@ -196,18 +168,13 @@ def category(category_id):
         prod_id.append(row[1])
         price.append(formatdeci)
     products = zip(productname, prod_id, price)
-    return render_template("products.html", products=products, **data)
+    return render_template("products.html", products=products, **getdatatemplate())
 
 
 @app.route("/product/<int:prod_id>", methods=['GET', 'POST'])
 def product(prod_id):
-    data = {
-        'welcome_message': 'Non-alcoholic Beer Store',
-        'footer_text': 'Service for Non-alcoholic Beer Store. All rights reserved.'
-    }
     # Självaste produktsidan. Här visas information om produkten så som hur många produkter i lager, pris
     # och ger möjlighet att lägga till i kundvagn.
-
     query = "SELECT * FROM products WHERE id = :prod_id"
     connect = db.engine.connect()
     result = connect.execute(text(query), {'prod_id': prod_id})
@@ -223,31 +190,29 @@ def product(prod_id):
     # Detta sker när man lägger till shopping cart.
     if request.method == "POST":
         quantity = request.form.get("quantity")
-        # FASEN VAD FUL KOD, här kollar den ifall quantity inte är angett, då kommer den som en None.
         if not quantity:
             quantity = 1
         else:
-            # Här måste vi casta om quantity till int, för det går inte jämföra str med int.
-            quantity = int(quantity)
-        # Vi kan inte beställa mer än vad som finns i lagret.
-        if quantity >= int(stock):
-            # Castar om stock till int också och jämför.
-            flash("Du kan inte handla fler än som finns i lager.")  # Vet inte ens om flash funkar.
-            return redirect(url_for("product", prod_id=prod_id))
+            try:
+                quantity = int(quantity)
+            except ValueError:
+                flash("Du måste ange ett giltigt antal.")
+                return redirect(url_for("product", prod_id=prod_id))
+        if quantity <= 0:
+            flash("Du kan inte köpa en negativ mängd av en produkt.")
+        elif quantity >= int(stock):
+            flash("Du kan inte handla fler än vad som finns i lager.")
         else:
             cart_items(productID, quantity)
-            return redirect(url_for("product", prod_id=prod_id))
+            flash("Produkten har lagts till i varukorgen.")
+        return redirect(url_for("product", prod_id=prod_id))
     return render_template("productpage.html", prod_id=prod_id, productname=productname, stock=stock, price=price,
-                           rating=rate, comment=comment, **data)
+                           rating=rate, comment=comment, **getdatatemplate())
 
 
 @app.route("/shoppingcart")
 @login_required
 def shoppingcart():
-    data = {
-        'welcome_message': 'Non-alcoholic Beer Store',
-        'footer_text': 'Service for Non-alcoholic Beer Store. All rights reserved.'
-    }
     uid = current_user.id
     cart_query = "SELECT product_id, quantity FROM cart_items WHERE user_id = :current_user"
     product_query = "SELECT item_name, price FROM products WHERE id = :product_id"
@@ -261,7 +226,7 @@ def shoppingcart():
         for product in product_result:
             shopping_results.append((product[0], str(product[1]), quantity))
     connect.close()
-    return render_template("shoppingcart.html", shopping_results=shopping_results, **data)
+    return render_template("shoppingcart.html", shopping_results=shopping_results, **getdatatemplate())
 
 
 def cart_items(prod_id, quantity):
@@ -270,7 +235,6 @@ def cart_items(prod_id, quantity):
              "DUPLICATE KEY UPDATE quantity = quantity + :quantity")
     connect = db.engine.connect()
     connect.execute(text(query), {'user_id': current_user.id, 'product_id': prod_id, 'quantity': quantity})
-    print("Lade till i cart_items: ", prod_id, " antal: " + str(quantity))
     connect.commit()
     connect.close()
 
@@ -286,10 +250,6 @@ def getUserName(userid):
 @app.route('/checkout', methods=['GET', 'POST'])
 @login_required
 def checkout():
-    data = {
-        'welcome_message': 'Non-alcoholic Beer Store',
-        'footer_text': 'Service for Non-alcoholic Beer Store. All rights reserved.'
-    }
     uid = current_user.id
     summa = sumtotal(uid)
     if request.method == "POST":
@@ -316,7 +276,7 @@ def checkout():
         query = ("INSERT INTO checkout(user_id, shipping_id, payment_id, sum_total) VALUES (:user_id, :shipping_id, "
                  ":payment_id, :sum_total);" "DELETE FROM cart_items WHERE user_id = :user_id;")
         connect = db.engine.connect()
-        # TODO: Payment_id är ju ifall de använder swish etc, och den är inte gjord än, så vi hårdkodar här.
+        # TODO: Payment_id är ju ifall de använder andra betalningstjänster etc, och den är inte gjord än, så vi hårdkodar här.
         # Kanske ta bort shipping_id? den verkar vara överflödig.
         connect.execute(text(query), {'user_id': uid, 'shipping_id': uid, 'payment_id': 1, 'sum_total': summa})
         connect.commit()
@@ -330,14 +290,15 @@ def checkout():
         result = connect.execute(text(query), {'user_id': uid})
         connect.close()
         user_info = result.fetchone()
-        return render_template("checkout.html", user_info=user_info, sum_total=summa, **data)
+        return render_template("checkout.html", user_info=user_info, sum_total=summa, **getdatatemplate())
 
 
 @app.route('/thankyou')
+@login_required
 def thankyou():
     data = {
         'title': 'Non-alcoholic Beer Store',
-        'welcome_message': 'Thank you for shopping Non-alcoholic Beer!',
+        'welcome_message': 'Thank you for shopping at Non-alcoholic Beer Store!',
         'footer_text': 'Service for Non-alcoholic Beer Store. All rights reserved.'
     }
     return render_template("thankyou.html", **data)
@@ -361,7 +322,6 @@ def getrating(prod_id):
 def rateproduct():
     prod_id = request.form.get('prod_id')
     rating = request.form.get('rating')
-    # print(prod_id)
     query = "INSERT into ratings(prod_id, user_id, rating) VALUES (:prod_id, :user_id, :rating)"
     connect = db.engine.connect()
     connect.execute(text(query), {'user_id': current_user.id, 'prod_id': prod_id, 'rating': rating})
@@ -383,8 +343,17 @@ def sumtotal(uid):
             # something something multiply with quantity...
             sum_total += float(result[0]) * quanprod[0]
     connect.close()
-    # print(sum_total)
     return sum_total
+
+
+def getdatatemplate():
+    data = {
+        'title': 'Non-alcoholic Beer Store',
+        'welcome_message': 'Non-alcoholic Beer Store',
+        'user': load_users(),
+        'footer_text': 'Service for Non-alcoholic Beer Store. All rights reserved.'
+    }
+    return data
 
 
 def deductquantity(uid):
@@ -409,13 +378,14 @@ def deductquantity(uid):
 
 
 @app.route('/add-comment', methods=['POST'])
+@login_required
 def addcomment():
     prod_id = request.form.get('prod_id')
     comment = request.form.get('comment')
-    # print(prod_id)
+    cleancomment = nh3.clean(comment)
     query = "INSERT into comments(prod_id, user_id, comment) VALUES (:prod_id, :user_id, :comment)"
     connect = db.engine.connect()
-    connect.execute(text(query), {'prod_id': prod_id, 'user_id': current_user.id, 'comment': comment})
+    connect.execute(text(query), {'prod_id': prod_id, 'user_id': current_user.id, 'comment': cleancomment})
     connect.commit()
     connect.close()
     return redirect(url_for("product", prod_id=prod_id))
@@ -432,14 +402,12 @@ def getcomment(prod_id):
     else:
         comment_list = ""
         for row in rows:
-            comment = row[0]
+            comment = nh3.clean(row[0])
             user_id = row[1]
             username = getUserName(user_id)
             firstname = username[0]
             lastname = username[1]
-            # print(comment, user_id, username)
             comment_list += comment + " Skriven av: " + firstname + " " + lastname + '<br>'
-        #print(comment_list)
         return comment_list
 
 
