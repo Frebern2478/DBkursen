@@ -1,4 +1,4 @@
-from os import urandom,environ
+from os import urandom
 
 import nh3
 from flask import *
@@ -9,7 +9,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from Login.User import User, AnonymousUser
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+pymysql://root:hej123@localhost:3306/dbkursen"
+app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+pymysql://root:root@dbscripts:3306/dbkursen"
 app.config["SECRET_KEY"] = urandom(20)  # TEST
 db = SQLAlchemy()
 db.init_app(app)
@@ -90,7 +90,7 @@ def register():
         connect.commit()
         connect.close()
         return redirect(url_for("login"))
-    return render_template("register.html", getdatatemplate())
+    return render_template("register.html")
 
 
 @app.route("/logout")

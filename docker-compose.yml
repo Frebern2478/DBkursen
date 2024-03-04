@@ -5,13 +5,19 @@ services:
       dockerfile: Dockerfile
     depends_on:
       - dbscripts
+    ports:
+      - "5000:5000"
 
   dbscripts:
     build:
       context: ./dbscripts
+      dockerfile: Dockerfile
     restart: always
     environment:
       MYSQL_DATABASE: 'dbkursen'
       MYSQL_ROOT_PASSWORD: 'root'
     ports:
       - '3306:3306'
+    volumes:
+        - "./dbscripts/table-creation.sql:/docker-entrypoint-initdb.d/1.sql"
+        - "./dbscripts/products.sql:/docker-entrypoint-initdb.d/2.sql"
