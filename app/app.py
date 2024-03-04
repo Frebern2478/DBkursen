@@ -10,7 +10,7 @@ from Login.User import User, AnonymousUser
 
 db = SQLAlchemy()
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = environ.get('DB_URL')
+app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+pymysql://root:hej123@localhost:3306/dbkursen"
 app.config["SECRET_KEY"] = urandom(20)  # TEST
 db.init_app(app)
 

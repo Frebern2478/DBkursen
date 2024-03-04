@@ -5,8 +5,6 @@ services:
       dockerfile: Dockerfile
     depends_on:
       - dbscripts
-    environment:
-      - DB_URL=mysql://root:hej123@localhost:3306/dbkursen
 
   dbscripts:
     build:
