@@ -1,4 +1,4 @@
-from os import urandom
+from os import urandom,environ
 
 import nh3
 from flask import *
@@ -10,7 +10,7 @@ from Login.User import User, AnonymousUser
 
 db = SQLAlchemy()
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:hej123@localhost:3306/dbkursen'
+app.config['SQLALCHEMY_DATABASE_URI'] = environ.get('DB_URL')
 app.config["SECRET_KEY"] = urandom(20)  # TEST
 db.init_app(app)
 
@@ -412,4 +412,4 @@ def getcomment(prod_id):
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()
