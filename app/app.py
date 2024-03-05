@@ -10,7 +10,6 @@ from Login.User import User, AnonymousUser
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+pymysql://root:root@dbscripts:3306/dbkursen"
-#app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+pymysql://root:hej123@localhost:3306/dbkursen"
 app.config["SECRET_KEY"] = urandom(20)  # TEST
 db = SQLAlchemy()
 db.init_app(app)
@@ -471,17 +470,21 @@ def deleteallcommentandrating(prod_id):
 
 @app.route('/add_product/<int:category_id>', methods=['GET', 'POST'])
 def add_product(category_id):
+    item_name = request.form.get('item_name')
+    in_stock = request.form.get('in_stock')
+    price = request.form.get('price')
     if iscurrentuseradmin():
         if request.method == 'POST':
-            item_name = request.form.get('item_name')
-            in_stock = request.form.get('quantity')
-            price = request.form.get('price')
-            query = "INSERT INTO products (category_id,item_name, in_stock, price) VALUES (:category_id, :item_name, :in_stock, :price)"
-            connect = db.engine.connect()
-            connect.execute(text(query), {'category_id': category_id,'item_name': item_name, 'in_stock': in_stock, 'price': price})
-            connect.commit()
-            connect.close()
-            return render_template("thankyou.html")
+            if int(in_stock) <= 0 or int(price) <= 0:
+                flash("Invalid price and or quantity value.")
+                print("Invalid price and quantity value.")
+            else:
+                query = "INSERT INTO products (category_id,item_name, in_stock, price) VALUES (:category_id, :item_name, :in_stock, :price)"
+                connect = db.engine.connect()
+                connect.execute(text(query), {'category_id': category_id,'item_name': item_name, 'in_stock': in_stock, 'price': price})
+                connect.commit()
+                connect.close()
+                return render_template("thankyou.html")
     return render_template("add_product.html")
 
 
