@@ -9,7 +9,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from Login.User import User, AnonymousUser
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+pymysql://root:root@dbscripts:3306/dbkursen"
+# app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+pymysql://root:root@dbscripts:3306/dbkursen"
+app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+pymysql://root:hej123@localhost:3306/dbkursen"
 app.config["SECRET_KEY"] = urandom(20)  # TEST
 db = SQLAlchemy()
 db.init_app(app)
@@ -392,7 +393,8 @@ def addcomment():
 
 
 def getcomment(prod_id):
-    query = "SELECT comment, user_id FROM comments WHERE prod_id = :prod_id"
+    userprivilege = getuserprivilege(current_user.id)
+    query = "SELECT id ,comment, user_id FROM comments WHERE prod_id = :prod_id"
     connect = db.engine.connect()
     comments = connect.execute(text(query), {'prod_id': prod_id})
     rows = comments.fetchall()
@@ -402,13 +404,48 @@ def getcomment(prod_id):
     else:
         comment_list = ""
         for row in rows:
-            comment = nh3.clean(row[0])
-            user_id = row[1]
+            comment_id = row[0]
+            comment = nh3.clean(row[1])
+            user_id = row[2]
             username = getUserName(user_id)
             firstname = username[0]
             lastname = username[1]
             comment_list += comment + " Skriven av: " + firstname + " " + lastname + '<br>'
+            if userprivilege != 0:
+                # Add delete link
+                delete_url = url_for('delete_comment', comment_id=comment_id)
+                comment_list += f" <a href='{delete_url}'>Delete</a>"
+            comment_list += '<br>'
         return comment_list
+
+
+def getuserprivilege(uid):
+    query = "SELECT privilege FROM users WHERE id = :id"
+    connect = db.engine.connect()
+    result = connect.execute(text(query), {'id': uid})
+    userprivilege = result.fetchone()
+    connect.close()
+    if not userprivilege:
+        return None
+    return userprivilege[0]
+
+
+@app.route('/delete_comment/<int:comment_id>', methods=['GET', 'POST'])
+def delete_comment(comment_id):
+    userprivilege = getuserprivilege(current_user.id)
+    print(userprivilege)
+    # prod_id = request.form.get('prod_id')
+    if userprivilege >= 1:
+        query = "DELETE FROM comments WHERE id = :comment_id"
+        connect = db.engine.connect()
+        connect.execute(text(query), {'comment_id': comment_id})
+        connect.commit()
+        connect.close()
+        return render_template("thankyou.html")
+        # return redirect(url_for("product", prod_id=prod_id))
+    else:
+        return render_template("login.html")
+
 
 
 if __name__ == '__main__':
