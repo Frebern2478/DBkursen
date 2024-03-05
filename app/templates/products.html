@@ -20,7 +20,12 @@
                 <h4><a href="/product/{{ prod_id }}">{{ productname }}</a></h4>
                 <p>Beskrivning</p>
                 <div class="product-bottom-details">
-                    <div class="product-price"> {{ price }} kr</div>
+                    <div class="product-price"> {{ price }} kr
+                        {% if is_admin %}
+                         <a href="{{ url_for('delete_product', prod_id=prod_id) }}">Delete</a>
+                        {% endif %}
+
+                    </div>
                     <div class="product-links">
 
                     </div>
@@ -28,6 +33,23 @@
             </div>
         </div>
         {% endfor %}
+        {% if is_admin %}
+            <div class="product-card">
+            <div class="product-tumb">
+                +
+            </div>
+            <div class="product-details">
+                <h4><a href="{{ url_for('add_product', category_id=category_id) }}">Add Product</a></h4>
+                <p>Beskrivning</p>
+                <div class="product-bottom-details">
+                    <div class="product-price"> gratis kr</div>
+                    <div class="product-links">
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
     </div>
     <footer>
         <p>&copy; 2024 {{ footer_text }}</p>

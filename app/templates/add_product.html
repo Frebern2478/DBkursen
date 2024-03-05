@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" href="../static/styles.css">
+</head>
+<body>
+
+    <header>
+        <h2>{{ welcome_message }}</h2>
+    </header>
+
+    <main>
+
+    <form action="#" method="post">
+    <label for="item_name">item name:</label>
+    <input type="text" name="item_name">
+    <label for="in_stock">in_stock:</label>
+    <input type="number" name="in_stock">
+    <label for="price">Price:</label>
+    <input type="text" name="price">
+      <button type="submit">Submit</button>
+    </form>
+
+    </main>
+
+    <footer>
+        <p>&copy; 2024 {{ footer_text }}</p>
+    </footer>
+</body>
+</html>

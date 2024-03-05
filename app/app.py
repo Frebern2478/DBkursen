@@ -9,8 +9,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from Login.User import User, AnonymousUser
 
 app = Flask(__name__)
-#app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+pymysql://root:root@dbscripts:3306/dbkursen"
-app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+pymysql://root:hej123@localhost:3306/dbkursen"
+app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+pymysql://root:root@dbscripts:3306/dbkursen"
+#app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+pymysql://root:hej123@localhost:3306/dbkursen"
 app.config["SECRET_KEY"] = urandom(20)  # TEST
 db = SQLAlchemy()
 db.init_app(app)
@@ -156,6 +156,7 @@ def store():
 @app.route("/category/<int:category_id>")
 def category(category_id):
     # Denna sida visar alla products med samma category_id och fungerar likadant som store
+    is_admin = iscurrentuseradmin()
     productname = []
     prod_id = []
     price = []
@@ -169,7 +170,7 @@ def category(category_id):
         prod_id.append(row[1])
         price.append(formatdeci)
     products = zip(productname, prod_id, price)
-    return render_template("products.html", products=products, **getdatatemplate())
+    return render_template("products.html", products=products, is_admin=is_admin, **getdatatemplate(), category_id=category_id)
 
 
 @app.route("/product/<int:prod_id>", methods=['GET', 'POST'])
@@ -414,9 +415,9 @@ def getcomment(prod_id):
             firstname = username[0]
             lastname = username[1]
             comment_list += comment + " Skriven av: " + firstname + " " + lastname + '<br>'
-            if userprivilege != 0:
+            if iscurrentuseradmin():
                 # Add delete link
-                delete_url = url_for('delete_comment', comment_id=comment_id)
+                delete_url = url_for('delete_comment', comment_id=comment_id, prod_id=prod_id)
                 comment_list += f" <a href='{delete_url}'>Delete</a>"
             comment_list += '<br>'
         return comment_list
@@ -433,22 +434,68 @@ def getuserprivilege(uid):
     return userprivilege[0]
 
 
-@app.route('/delete_comment/<int:comment_id>', methods=['GET', 'POST'])
-def delete_comment(comment_id):
+def iscurrentuseradmin():
+    # if user is admin return true.
     userprivilege = getuserprivilege(current_user.id)
-    print(userprivilege)
-    # prod_id = request.form.get('prod_id')
-    if userprivilege >= 1:
+    if userprivilege != 0:
+        # print("User is admin")
+        return True
+    else:
+        return False
+
+
+@app.route('/delete_comment/<int:comment_id><int:prod_id>', methods=['GET', 'POST'])
+def delete_comment(comment_id, prod_id):
+    if iscurrentuseradmin():
         query = "DELETE FROM comments WHERE id = :comment_id"
         connect = db.engine.connect()
         connect.execute(text(query), {'comment_id': comment_id})
         connect.commit()
         connect.close()
-        return render_template("thankyou.html")
-        # return redirect(url_for("product", prod_id=prod_id))
-    else:
-        return render_template("login.html")
+        # return render_template("thankyou.html")
+        return redirect(url_for("product", prod_id=prod_id))
 
+
+def deleteallcommentandrating(prod_id):
+    # Detta behövs för att kunna ta bort en produkt som har kommentar eller rating pga foreign key.
+    if iscurrentuseradmin():
+        commentquery = "DELETE FROM comments WHERE prod_id = :prod_id"
+        connect = db.engine.connect()
+        connect.execute(text(commentquery), {'prod_id': prod_id})
+        connect.commit()
+        ratingquery = "DELETE FROM ratings WHERE prod_id = :prod_id"
+        connect.execute(text(ratingquery), {'prod_id': prod_id})
+        connect.commit()
+        connect.close()
+
+
+@app.route('/add_product/<int:category_id>', methods=['GET', 'POST'])
+def add_product(category_id):
+    if iscurrentuseradmin():
+        if request.method == 'POST':
+            item_name = request.form.get('item_name')
+            in_stock = request.form.get('quantity')
+            price = request.form.get('price')
+            query = "INSERT INTO products (category_id,item_name, in_stock, price) VALUES (:category_id, :item_name, :in_stock, :price)"
+            connect = db.engine.connect()
+            connect.execute(text(query), {'category_id': category_id,'item_name': item_name, 'in_stock': in_stock, 'price': price})
+            connect.commit()
+            connect.close()
+            return render_template("thankyou.html")
+    return render_template("add_product.html")
+
+
+@app.route('/delete_product/<int:prod_id>', methods=['GET', 'POST'])
+def delete_product(prod_id):
+    if iscurrentuseradmin():
+        deleteallcommentandrating(prod_id)
+        query = "DELETE FROM products WHERE id = :prod_id"
+        connect = db.engine.connect()
+        connect.execute(text(query), {'prod_id': prod_id})
+        connect.commit()
+        connect.close()
+        return render_template("thankyou.html")
+        # return redirect(url_for("category", prod_id=prod_id))
 
 
 if __name__ == '__main__':
