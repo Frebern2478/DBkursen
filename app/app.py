@@ -9,8 +9,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from Login.User import User, AnonymousUser
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+pymysql://root:root@dbscripts:3306/dbkursen"
-#app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+pymysql://root:hej123@localhost:3306/dbkursen"
+#app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+pymysql://root:root@dbscripts:3306/dbkursen"
+app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+pymysql://root:hej123@localhost:3306/dbkursen"
 app.config["SECRET_KEY"] = urandom(20)  # TEST
 db = SQLAlchemy()
 db.init_app(app)
@@ -274,14 +274,17 @@ def checkout():
         deductquantity(uid)
         # Tar bort från cart_items och lägger till i checkout databsen.
         # TODO: Ett problem är ju att vi vet inte nu vad kunden har beställt.
-        query = ("INSERT INTO checkout(user_id, shipping_id, payment_id, sum_total) VALUES (:user_id, :shipping_id, "
-                 ":payment_id, :sum_total);" "DELETE FROM cart_items WHERE user_id = :user_id;")
+        insert_query = "INSERT INTO checkout (user_id, shipping_id, payment_id, sum_total) VALUES (:user_id, :shipping_id, :payment_id, :sum_total)"
         connect = db.engine.connect()
-        # TODO: Payment_id är ju ifall de använder andra betalningstjänster etc, och den är inte gjord än, så vi hårdkodar här.
-        # Kanske ta bort shipping_id? den verkar vara överflödig.
-        connect.execute(text(query), {'user_id': uid, 'shipping_id': uid, 'payment_id': 1, 'sum_total': summa})
+        connect.execute(text(insert_query), {'user_id': uid, 'shipping_id': uid, 'payment_id': 1,
+                                             'sum_total': summa})
+        # Delete cart items
+        delete_query = "DELETE FROM cart_items WHERE user_id = :user_id"
+        connect.execute(text(delete_query), {'user_id': uid})
         connect.commit()
         connect.close()
+        # TODO: Payment_id är ju ifall de använder andra betalningstjänster etc, och den är inte gjord än, så vi hårdkodar här.
+        # Kanske ta bort shipping_id? den verkar vara överflödig.
         return redirect(url_for("thankyou"))
     else:
         # Detta gör så ifall det redan finns information om användarens adress etc så läggs det in automatiskt
